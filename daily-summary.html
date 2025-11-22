@@ -8,6 +8,11 @@
     body { font-family: Arial, sans-serif; margin: 20px; font-size:20px; }
     select { margin-bottom: 20px; padding: 5px; font-size: 20px; }
 
+    .container {
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+    }
     .card {
       border: 1px solid #ccc;
       border-radius: 8px;
@@ -80,14 +85,14 @@
   </style>
 </head>
 <body>
-
+<div class="container">
 <h2>Grandma's Daily Event Log</h2>
 Select Date: <select id="dateDropdown">
   <option value="">-- Select Date --</option>
 </select>
 
 <div id="cardsContainer"></div>
-
+</div>
 <script>
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQjB7tT56hx9Xnyq8smG6ujPDxoMQ3LC-jR8dZspAoGaVoV-iE8AUHrmGYE_SUPxzkUo8moW8P1SRQ0/pub?gid=74004597&single=true&output=csv';
 
