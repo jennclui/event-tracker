@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function sendToGoogleSheet(data) {
     try {
-      const response = await fetch("https://script.google.com/macros/s/AKfycbwp8gumFoOKsEdmJKYJapKo7pR8JfCW-9L9Au1NKstcEI10SpUcWQnoQYzhY36QTHR0/exec", {
+      const response = await fetch("https://script.google.com/macros/s/AKfycbwewj2JBJ_RzO8T3rPhiqzja7AIQVeEVJsSjqoOu8Q0hcwvkXr7kggTLqyNfEzButma/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
