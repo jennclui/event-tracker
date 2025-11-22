@@ -1,0 +1,387 @@
+<!--
+SUMMARY:
+Full-page Event Logger UI for GitHub Pages.
+- Start button logs a Timestamp and reveals the full form.
+- Required fields: Collection, Event.
+- If StartDate is provided, StartTime is required.
+- Photos uploaded are sent to the Apps Script with action 'uploadImage' and stored in the Drive folder for the selected Collection.
+- After upload, an event payload with comma-separated photo URLs is posted to the Apps Script with action 'submitEvent'.
+- Cancel clears all form state and hides the form.
+
+CONFIG: Replace POST_URL with your Apps Script web app URL if different.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Event Logger - Full Page</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 900px; margin: 16px auto; padding: 12px; }
+  h1 { margin-bottom: 8px; }
+  .hidden { display: none; }
+  label { display: block; margin: 12px 0 6px; }
+  input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+  .row { display: flex; gap: 12px; }
+  .col { flex: 1; }
+  .buttons { margin-top: 18px; display: flex; gap: 10px; }
+  button { padding: 10px 14px; }
+  #photoPreview img { max-width: 140px; margin-right: 8px; margin-bottom: 8px; display: inline-block; vertical-align: top; }
+  #status { margin-top: 12px; color: #333; }
+</style>
+</head>
+<body>
+
+<h1>Event Logger</h1>
+
+<!-- Start button -->
+<div id="startWrap">
+  <button id="startBtn">Start New Event</button>
+</div>
+
+<!-- Full page form -->
+<div id="formWrap" class="hidden">
+  <form id="eventForm">
+    <!-- Internal timestamp when the user clicked Start -->
+    <input type="hidden" id="timestampInput" name="timestamp">
+
+    <div class="row">
+      <div class="col">
+        <label for="startDate">Start Date (optional)</label>
+        <input id="startDate" type="date" />
+      </div>
+      <div class="col">
+        <label for="startTime">Start Time (required if date is used)</label>
+        <input id="startTime" type="time" />
+      </div>
+    </div>
+
+    <label for="duration">Duration (minutes)</label>
+    <input id="duration" type="number" min="0" placeholder="e.g., 90" />
+
+    <div class="row">
+      <div class="col">
+        <label for="collection">Collection (required)</label>
+        <select id="collection" required>
+          <option value="">Select collection</option>
+          <option>Meal</option>
+          <option>Bathroom</option>
+          <option>Rest</option>
+          <option>Activity</option>
+        </select>
+      </div>
+      <div class="col">
+        <label for="eventType">Event (required)</label>
+        <input id="eventType" type="text" required placeholder="Event type" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label for="sub1">SubEvent 1</label>
+        <input id="sub1" type="text" />
+      </div>
+      <div class="col">
+        <label for="sub2">SubEvent 2</label>
+        <input id="sub2" type="text" />
+      </div>
+    </div>
+
+    <label for="sub3">SubEvent 3</label>
+    <input id="sub3" type="text" />
+
+    <label for="rating">Rating</label>
+    <input id="rating" type="text" />
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" rows="3"></textarea>
+
+    <label for="photos">Photos (choose one or more files)</label>
+    <input id="photos" type="file" multiple accept="image/*" />
+
+    <div id="photoPreview"></div>
+
+    <div class="buttons">
+      <button id="submitBtn" type="submit">Submit Event</button>
+      <button id="cancelBtn" type="button">Cancel</button>
+    </div>
+
+    <div id="status" role="status" aria-live="polite"></div>
+  </form>
+</div>
+
+<script>
+/*
+Summary:
+Client-side UI and logic that:
+- Captures a timestamp on Start button click
+- Validates required fields (collection, event, and StartDate->StartTime)
+- Uploads selected images to Apps Script via action 'uploadImage'
+- After image upload completes, submits assembled event payload with action 'submitEvent'
+- Uses your Apps Script web app URL supplied below
+*/
+
+// CONFIG: your Apps Script web app POST URL (provided earlier)
+const POST_URL = 'https://script.google.com/macros/s/AKfycbx-p_rp6q4t0ad3BAGBh3I_YCyjiTFOIhStuVdWOjWSpH3wGTJoUaqMPOMXwXmHXSR8/exec';
+
+// DOM references
+const startBtn = document.getElementById('startBtn');
+const startWrap = document.getElementById('startWrap');
+const formWrap = document.getElementById('formWrap');
+const eventForm = document.getElementById('eventForm');
+const timestampInput = document.getElementById('timestampInput');
+const startDateInput = document.getElementById('startDate');
+const startTimeInput = document.getElementById('startTime');
+const durationInput = document.getElementById('duration');
+const collectionSelect = document.getElementById('collection');
+const eventTypeInput = document.getElementById('eventType');
+const sub1Input = document.getElementById('sub1');
+const sub2Input = document.getElementById('sub2');
+const sub3Input = document.getElementById('sub3');
+const ratingInput = document.getElementById('rating');
+const notesInput = document.getElementById('notes');
+const photosInput = document.getElementById('photos');
+const photoPreview = document.getElementById('photoPreview');
+const statusDiv = document.getElementById('status');
+const submitBtn = document.getElementById('submitBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+
+// Utility: pad numbers
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+// Utility: format Date -> YYYY-MM-DD
+function dateToYMD(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+// Utility: format Date -> HH:MM
+function dateToHM(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+// Show the form and log timestamp when Start clicked
+startBtn.addEventListener('click', () => {
+  const ts = new Date();
+  timestampInput.value = ts.toISOString();
+  startWrap.classList.add('hidden');
+  formWrap.classList.remove('hidden');
+  statusDiv.textContent = 'Logging started at ' + ts.toLocaleString();
+});
+
+// Cancel: reset and hide the form
+cancelBtn.addEventListener('click', () => {
+  eventForm.reset();
+  photoPreview.innerHTML = '';
+  timestampInput.value = '';
+  statusDiv.textContent = '';
+  formWrap.classList.add('hidden');
+  startWrap.classList.remove('hidden');
+});
+
+// Show previews of selected photos
+photosInput.addEventListener('change', () => {
+  photoPreview.innerHTML = '';
+  const files = Array.from(photosInput.files || []);
+  files.forEach(file => {
+    const img = document.createElement('img');
+    img.alt = file.name;
+    img.title = file.name;
+    img.file = file;
+    photoPreview.appendChild(img);
+    const reader = new FileReader();
+    reader.onload = (e) => { img.src = e.target.result; };
+    reader.readAsDataURL(file);
+  });
+});
+
+// Compute Event Date/Time based on rules
+function computeEventDateTime({ timestampISO, durationMinutes, startDateStr, startTimeStr }) {
+  const ts = new Date(timestampISO);
+  const duration = parseInt(durationMinutes, 10) || 0;
+
+  // StartDate requires StartTime
+  if (startDateStr && !startTimeStr) {
+    throw new Error('Start Time is required when a Start Date is selected.');
+  }
+
+  if (startDateStr && startTimeStr) {
+    return { eventDateStr: startDateStr, eventTimeStr: startTimeStr };
+  }
+
+  if (!startDateStr && !startTimeStr) {
+    if (duration > 0) {
+      const adjusted = new Date(ts.getTime() - duration * 60000);
+      return { eventDateStr: dateToYMD(adjusted), eventTimeStr: dateToHM(adjusted) };
+    }
+    return { eventDateStr: dateToYMD(ts), eventTimeStr: dateToHM(ts) };
+  }
+
+  if (!startDateStr && startTimeStr) {
+    return { eventDateStr: dateToYMD(ts), eventTimeStr: startTimeStr };
+  }
+
+  // Fallback
+  return { eventDateStr: dateToYMD(ts), eventTimeStr: dateToHM(ts) };
+}
+
+// Upload a single file as Base64 to Apps Script and return the returned URL
+async function uploadFileToAppsScript(file, collection) {
+  // Read file as dataURL and extract base64
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+
+  // dataUrl looks like "data:image/jpeg;base64,/9j/4AAQ..."
+  const parts = dataUrl.split(',');
+  const meta = parts[0]; // data:image/jpeg;base64
+  const base64 = parts[1];
+  const mimeTypeMatch = meta.match(/data:(.*);base64/);
+  const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+
+  // Build body for uploadImage action
+  const body = {
+    action: 'uploadImage',
+    collection: collection,
+    filename: file.name,
+    mimeType: mimeType,
+    base64: base64
+  };
+
+  // POST to Apps Script and await JSON
+  const res = await fetch(POST_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  // Parse JSON response
+  const json = await res.json();
+  if (json.status !== 'success') {
+    throw new Error(json.message || 'Image upload failed');
+  }
+  return json.url;
+}
+
+// Handle form submit
+eventForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  // Basic required validation
+  const collection = collectionSelect.value.trim();
+  const eventType = eventTypeInput.value.trim();
+  if (!collection) {
+    alert('Collection is required.');
+    return;
+  }
+  if (!eventType) {
+    alert('Event is required.');
+    return;
+  }
+
+  // StartDate/StartTime dependency validation
+  const startDate = startDateInput.value.trim();
+  const startTime = startTimeInput.value.trim();
+  if (startDate && !startTime) {
+    alert('Start Time is required when Start Date is selected.');
+    return;
+  }
+
+  // Gather values
+  const timestampISO = timestampInput.value;
+  if (!timestampISO) {
+    alert('Please press "Start New Event" to begin logging.');
+    return;
+  }
+
+  const duration = durationInput.value.trim();
+  const sub1 = sub1Input.value.trim();
+  const sub2 = sub2Input.value.trim();
+  const sub3 = sub3Input.value.trim();
+  const rating = ratingInput.value.trim();
+  const notes = notesInput.value.trim();
+
+  // Upload photos (if any) and collect public URLs
+  statusDiv.textContent = 'Uploading images, please wait.';
+  const files = Array.from(photosInput.files || []);
+  const uploadedUrls = [];
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      statusDiv.textContent = `Uploading ${f.name} (${i+1}/${files.length})...`;
+      // uploadFileToAppsScript returns the direct view URL
+      const url = await uploadFileToAppsScript(f, collection);
+      uploadedUrls.push(url);
+    }
+  } catch (err) {
+    statusDiv.textContent = '';
+    alert('Image upload failed: ' + err.message);
+    return;
+  }
+
+  // Compute event Date and Time using rules
+  let eventDateStr, eventTimeStr;
+  try {
+    const result = computeEventDateTime({
+      timestampISO: timestampISO,
+      durationMinutes: duration,
+      startDateStr: startDate,
+      startTimeStr: startTime
+    });
+    eventDateStr = result.eventDateStr;
+    eventTimeStr = result.eventTimeStr;
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+
+  // Build final payload for submitEvent
+  const payload = {
+    action: 'submitEvent',
+    Timestamp: timestampISO,
+    Date: eventDateStr,
+    Time: eventTimeStr,
+    StartDate: startDate || '',
+    StartTime: startTime || '',
+    Duration: duration || '',
+    Collection: collection,
+    Event: eventType,
+    SubEvent_1: sub1 || '',
+    SubEvent_2: sub2 || '',
+    SubEvent_3: sub3 || '',
+    Rating: rating || '',
+    Notes: notes || '',
+    Photo: uploadedUrls.join(',')
+  };
+
+  statusDiv.textContent = 'Submitting event...';
+
+  try {
+    const res = await fetch(POST_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.status !== 'success') {
+      throw new Error(json.message || 'Event submission failed');
+    }
+  } catch (err) {
+    statusDiv.textContent = '';
+    alert('Event submission failed: ' + (err.message || 'unknown error'));
+    return;
+  }
+
+  // Success: reset UI
+  statusDiv.textContent = 'Event submitted successfully.';
+  eventForm.reset();
+  photoPreview.innerHTML = '';
+  timestampInput.value = '';
+  formWrap.classList.add('hidden');
+  startWrap.classList.remove('hidden');
+
+  // small delay and clear status
+  setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+});
+</script>
+</body>
+</html>
