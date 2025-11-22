@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Event Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    select { margin-bottom: 20px; padding: 5px; font-size: 16px; }
+
+    .card {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .card-title-collection {
+      font-weight: bold;
+      font-size: 16px;
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+      color: white;
+    }
+
+    .card-body {
+      display: flex;
+    }
+
+    .card-left {
+      width: 120px;
+      padding: 10px;
+      text-align: center;
+      background: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .card-left img {
+      width: 80px;
+      height: 80px;
+      margin-top: 10px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .card-right {
+      flex: 1;
+      padding: 10px 15px;
+    }
+
+    .card-right p { margin: 0px 5px 8px 0px; color: grey }
+    .photo-link { display: block; margin: 3px 0; color: blue; text-decoration: underline; }
+
+    /* Classes for Event Collections */
+    
+    .meal-event-event { border-left: 5px solid #2ecc71; }
+    .meal-event-event .card-title-collection {background-color: #2ecc71}
+    .bathroom-event-event { border-left: 5px solid #3498db; }
+    .bathroom-event-event .card-title-collection { background-color: #3498db; }
+    .rest-event-event { border-left: 5px solid #FF7F7F; }
+    .rest-event-event .card-title-collection { background-color: #FF7F7F; }
+    .engagement-event-event { border-left: 5px solid #9b59b6; }
+    .engagement-event-event .card-title-collection { background-color: #9b59b6; }
+
+  </style>
+</head>
+<body>
+
+<h2>Select Date:</h2>
+<select id="dateDropdown">
+  <option value="">-- Select Date --</option>
+</select>
+
+<div id="cardsContainer"></div>
+
+<script>
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQjB7tT56hx9Xnyq8smG6ujPDxoMQ3LC-jR8dZspAoGaVoV-iE8AUHrmGYE_SUPxzkUo8moW8P1SRQ0/pub?gid=74004597&single=true&output=csv';
+
+const eventImages = {
+  'Meal Event': {
+    'Breakfast': '/img/breakfast.png',
+    'Lunch': '/img/lunch.png',
+    'Dinner': '/img/dinner.png',
+    'Snack': '/img/snack.png',
+    'default': '/img/meal.png'
+  },
+  'Bathroom Event': {
+    'Bowel Movement': 'img/bowel.png',
+    'Urination': 'img/urine.png',
+    'default': 'img/bathroom.png'
+  },
+  'Rest Event': {
+    'Wakeup': 'img/wakeup.png',
+    'Nap': 'img/nap.png',
+    'default': 'img/rest.png'
+  },
+  'Engagement Event': {
+    'Video Call': 'img/video.png',
+    'Meeting': 'img/meeting.png',
+    'default': 'img/engagement.png'
+  }
+};
+
+
+async function fetchData() {
+  const res = await fetch(csvUrl);
+  const text = await res.text();
+  return new Promise(resolve => {
+    Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true,
+      complete: results => {
+        const data = results.data.map(row => {
+          const cleanRow = {};
+          Object.keys(row).forEach(key => {
+            cleanRow[key.trim()] = row[key] ? row[key].trim() : '';
+          });
+          return cleanRow;
+        });
+        resolve(data);
+      }
+    });
+  });
+}
+
+function populateDropdown(data) {
+  const dropdown = document.getElementById('dateDropdown');
+  const dates = Array.from(new Set(data.map(d => d.Date))).sort();
+  dates.forEach(date => {
+    const option = document.createElement('option');
+    option.value = date;
+    option.textContent = date;
+    dropdown.appendChild(option);
+  });
+}
+
+function renderCards(data, selectedDate) {
+  const container = document.getElementById('cardsContainer');
+  container.innerHTML = '';
+
+  const filtered = data
+    .filter(d => d.Date === selectedDate)
+    .sort((a,b) => (a.Time || '00:00:00').localeCompare(b.Time || '00:00:00'));
+
+  filtered.forEach(event => {
+    const card = document.createElement('div');
+    card.classList.add('card');
+
+    if(event['Event Collection']) {
+      card.classList.add(event['Event Collection'].toLowerCase().replace(' ', '-') + '-event');
+    }
+
+    // Collection title with time
+    let displayTime = event.Time || '';
+    if(displayTime) {
+      const parts = displayTime.split(':');
+      if(parts.length >= 2) {
+        displayTime = parts[0] + ':' + parts[1] + (displayTime.toUpperCase().includes('AM') ? ' AM' : ' PM');
+      }
+    }
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'card-title-collection';
+    titleDiv.textContent = `${displayTime}: ${event['Event Collection'] || ''}`;
+    card.appendChild(titleDiv);
+
+    // Card body
+    const bodyDiv = document.createElement('div');
+    bodyDiv.className = 'card-body';
+
+    // Left column (image only)
+    const left = document.createElement('div');
+    left.className = 'card-left';
+    let imgSrc = 'https://via.placeholder.com/80?text=Event';
+    if(event['Event Collection'] && eventImages[event['Event Collection']]) {
+      imgSrc = eventImages[event['Event Collection']][event['Event Type']] || eventImages[event['Event Collection']]['default'];
+    }
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    left.appendChild(img);
+
+    // Right column
+    const right = document.createElement('div');
+    right.className = 'card-right';
+    const collection = event['Event Collection'];
+
+    if(collection === 'Meal Event') {
+      if(event['Event Type']) right.innerHTML += `<p><strong> ${event['Event Type']}</strong></p>`;
+      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br> ${event['Notes']}</p>`;
+    } 
+    else if(collection === 'Bathroom Event') {
+      if(event['Event Type']) right.innerHTML += `<p><strong> ${event['Event Type']}</strong></p>`;
+      if(event['Sub Event Type']) right.innerHTML += `<p><strong>Details:</strong> ${event['Sub Event Type']}</p>`;
+      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br> ${event['Notes']}</p>`;
+    } 
+    else if(collection === 'Rest Event') {
+      if(event['Event Type']) right.innerHTML += `<p><strong> ${event['Event Type']}</strong></p>`;
+      if(event['Energy']) right.innerHTML += `<p><strong>Details:</strong> ${event['Energy']}</p>`;
+      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br> ${event['Notes']}</p>`;
+    } 
+    else if(collection === 'Engagement Event') {
+      if(event['Event Type']) right.innerHTML += `<p><strong> ${event['Event Type']}</strong></p>`;
+      if(event['Duration']) right.innerHTML += `<p><strong>Duration:</strong> ${event['Duration']}</p>`;
+      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br> ${event['Notes']}</p>`;
+    }
+
+    if(event['Photo Links']) {
+      const photos = event['Photo Links'].split(',').map(p => p.trim()).filter(p => p);
+      photos.forEach((url,i) => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.className = 'photo-link';
+        a.textContent = `Photo ${i+1}`;
+        right.appendChild(a);
+      });
+    }
+
+    bodyDiv.appendChild(left);
+    bodyDiv.appendChild(right);
+    card.appendChild(bodyDiv);
+    container.appendChild(card);
+  });
+}
+
+// Initialize
+fetchData().then(data => {
+  populateDropdown(data);
+  document.getElementById('dateDropdown').addEventListener('change', e => {
+    renderCards(data, e.target.value);
+  });
+});
+</script>
+
+</body>
+</html>
