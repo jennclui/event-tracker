@@ -112,276 +112,56 @@ CONFIG: Replace POST_URL with your Apps Script web app URL if different.
 </div>
 
 <script>
-/*
-Summary:
-Client-side UI and logic that:
-- Captures a timestamp on Start button click
-- Validates required fields (collection, event, and StartDate->StartTime)
-- Uploads selected images to Apps Script via action 'uploadImage'
-- After image upload completes, submits assembled event payload with action 'submitEvent'
-- Uses your Apps Script web app URL supplied below
-*/
+const POST_URL = 'https://script.google.com/macros/s/AKfycbwfMT-H423YopgSpihB3kLORaAKCRkDGs35Wm12uIE0sUuivigMUGhC2fRmIIOCwaOS/exec';
 
-// CONFIG: your Apps Script web app POST URL (provided earlier)
-const POST_URL = 'https://script.google.com/macros/s/AKfycbyCyobxvq7ngI0ludcVq6wIA7XSb9r9OySpAWwHVmWcR4Jg2_KjNIGm6ysSW0TXNPL6/exec';
-
-// DOM references
-const startBtn = document.getElementById('startBtn');
-const startWrap = document.getElementById('startWrap');
-const formWrap = document.getElementById('formWrap');
-const eventForm = document.getElementById('eventForm');
-const timestampInput = document.getElementById('timestampInput');
-const startDateInput = document.getElementById('startDate');
-const startTimeInput = document.getElementById('startTime');
-const durationInput = document.getElementById('duration');
-const collectionSelect = document.getElementById('collection');
-const eventTypeInput = document.getElementById('eventType');
-const sub1Input = document.getElementById('sub1');
-const sub2Input = document.getElementById('sub2');
-const sub3Input = document.getElementById('sub3');
-const ratingInput = document.getElementById('rating');
-const notesInput = document.getElementById('notes');
-const photosInput = document.getElementById('photos');
-const photoPreview = document.getElementById('photoPreview');
-const statusDiv = document.getElementById('status');
-const submitBtn = document.getElementById('submitBtn');
-const cancelBtn = document.getElementById('cancelBtn');
-
-// Utility: pad numbers
-function pad(n) { return n < 10 ? '0' + n : '' + n; }
-
-// Utility: format Date -> YYYY-MM-DD
-function dateToYMD(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-
-// Utility: format Date -> HH:MM
-function dateToHM(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
-
-// Show the form and log timestamp when Start clicked
-startBtn.addEventListener('click', () => {
-  const ts = new Date();
-  timestampInput.value = ts.toISOString();
-  startWrap.classList.add('hidden');
-  formWrap.classList.remove('hidden');
-  statusDiv.textContent = 'Logging started at ' + ts.toLocaleString();
-});
-
-// Cancel: reset and hide the form
-cancelBtn.addEventListener('click', () => {
-  eventForm.reset();
-  photoPreview.innerHTML = '';
-  timestampInput.value = '';
-  statusDiv.textContent = '';
-  formWrap.classList.add('hidden');
-  startWrap.classList.remove('hidden');
-});
-
-// Show previews of selected photos
-photosInput.addEventListener('change', () => {
-  photoPreview.innerHTML = '';
-  const files = Array.from(photosInput.files || []);
-  files.forEach(file => {
-    const img = document.createElement('img');
-    img.alt = file.name;
-    img.title = file.name;
-    img.file = file;
-    photoPreview.appendChild(img);
-    const reader = new FileReader();
-    reader.onload = (e) => { img.src = e.target.result; };
-    reader.readAsDataURL(file);
-  });
-});
-
-// Compute Event Date/Time based on rules
-function computeEventDateTime({ timestampISO, durationMinutes, startDateStr, startTimeStr }) {
-  const ts = new Date(timestampISO);
-  const duration = parseInt(durationMinutes, 10) || 0;
-
-  // StartDate requires StartTime
-  if (startDateStr && !startTimeStr) {
-    throw new Error('Start Time is required when a Start Date is selected.');
-  }
-
-  if (startDateStr && startTimeStr) {
-    return { eventDateStr: startDateStr, eventTimeStr: startTimeStr };
-  }
-
-  if (!startDateStr && !startTimeStr) {
-    if (duration > 0) {
-      const adjusted = new Date(ts.getTime() - duration * 60000);
-      return { eventDateStr: dateToYMD(adjusted), eventTimeStr: dateToHM(adjusted) };
-    }
-    return { eventDateStr: dateToYMD(ts), eventTimeStr: dateToHM(ts) };
-  }
-
-  if (!startDateStr && startTimeStr) {
-    return { eventDateStr: dateToYMD(ts), eventTimeStr: startTimeStr };
-  }
-
-  // Fallback
-  return { eventDateStr: dateToYMD(ts), eventTimeStr: dateToHM(ts) };
-}
-
-// Upload a single file as Base64 to Apps Script and return the returned URL
-async function uploadFileToAppsScript(file, collection) {
-  // Read file as dataURL and extract base64
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (e) => reject(e);
-    reader.readAsDataURL(file);
-  });
-
-  // dataUrl looks like "data:image/jpeg;base64,/9j/4AAQ..."
-  const parts = dataUrl.split(',');
-  const meta = parts[0]; // data:image/jpeg;base64
-  const base64 = parts[1];
-  const mimeTypeMatch = meta.match(/data:(.*);base64/);
-  const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
-
-  // Build body for uploadImage action
-  const body = {
-    action: 'uploadImage',
-    collection: collection,
-    filename: file.name,
-    mimeType: mimeType,
-    base64: base64
-  };
-
-  // POST to Apps Script and await JSON
-  const res = await fetch(POST_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  // Parse JSON response
-  const json = await res.json();
-  if (json.status !== 'success') {
-    throw new Error(json.message || 'Image upload failed');
-  }
-  return json.url;
-}
-
-// Handle form submit
-eventForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  // Basic required validation
-  const collection = collectionSelect.value.trim();
-  const eventType = eventTypeInput.value.trim();
-  if (!collection) {
-    alert('Collection is required.');
-    return;
-  }
-  if (!eventType) {
-    alert('Event is required.');
-    return;
-  }
-
-  // StartDate/StartTime dependency validation
-  const startDate = startDateInput.value.trim();
-  const startTime = startTimeInput.value.trim();
-  if (startDate && !startTime) {
-    alert('Start Time is required when Start Date is selected.');
-    return;
-  }
-
-  // Gather values
-  const timestampISO = timestampInput.value;
-  if (!timestampISO) {
-    alert('Please press "Start New Event" to begin logging.');
-    return;
-  }
-
-  const duration = durationInput.value.trim();
-  const sub1 = sub1Input.value.trim();
-  const sub2 = sub2Input.value.trim();
-  const sub3 = sub3Input.value.trim();
-  const rating = ratingInput.value.trim();
-  const notes = notesInput.value.trim();
-
-  // Upload photos (if any) and collect public URLs
-  statusDiv.textContent = 'Uploading images, please wait.';
-  const files = Array.from(photosInput.files || []);
-  const uploadedUrls = [];
-  try {
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      statusDiv.textContent = `Uploading ${f.name} (${i+1}/${files.length})...`;
-      // uploadFileToAppsScript returns the direct view URL
-      const url = await uploadFileToAppsScript(f, collection);
-      uploadedUrls.push(url);
-    }
-  } catch (err) {
-    statusDiv.textContent = '';
-    alert('Image upload failed: ' + err.message);
-    return;
-  }
-
-  // Compute event Date and Time using rules
-  let eventDateStr, eventTimeStr;
-  try {
-    const result = computeEventDateTime({
-      timestampISO: timestampISO,
-      durationMinutes: duration,
-      startDateStr: startDate,
-      startTimeStr: startTime
-    });
-    eventDateStr = result.eventDateStr;
-    eventTimeStr = result.eventTimeStr;
-  } catch (err) {
-    alert(err.message);
-    return;
-  }
-
-  // Build final payload for submitEvent
-  const payload = {
-    action: 'submitEvent',
-    Timestamp: timestampISO,
-    Date: eventDateStr,
-    Time: eventTimeStr,
-    StartDate: startDate || '',
-    StartTime: startTime || '',
-    Duration: duration || '',
-    Collection: collection,
-    Event: eventType,
-    SubEvent_1: sub1 || '',
-    SubEvent_2: sub2 || '',
-    SubEvent_3: sub3 || '',
-    Rating: rating || '',
-    Notes: notes || '',
-    Photo: uploadedUrls.join(',')
-  };
-
-  statusDiv.textContent = 'Submitting event...';
+async function submitEvent(data) {
+  console.log('Submitting event data:', data);
 
   try {
-    const res = await fetch(POST_URL, {
+    const response = await fetch(POST_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' }
     });
-    const json = await res.json();
-    if (json.status !== 'success') {
-      throw new Error(json.message || 'Event submission failed');
+
+    console.log('Raw response:', response);
+
+    const json = await response.json();
+    console.log('Parsed response:', json);
+
+    if (json.status === 'success') {
+      alert('Event submitted successfully!');
+    } else {
+      alert('Error: ' + json.message);
     }
   } catch (err) {
-    statusDiv.textContent = '';
-    alert('Event submission failed: ' + (err.message || 'unknown error'));
-    return;
+    console.error('Fetch error:', err);
+    alert('Fetch failed: ' + err.message);
   }
+}
 
-  // Success: reset UI
-  statusDiv.textContent = 'Event submitted successfully.';
-  eventForm.reset();
-  photoPreview.innerHTML = '';
-  timestampInput.value = '';
-  formWrap.classList.add('hidden');
-  startWrap.classList.remove('hidden');
+// Example usage: triggered on form submit
+document.getElementById('submitButton').addEventListener('click', function() {
+  const data = {
+    action: 'submitEvent',
+    Timestamp: new Date().toISOString(),
+    Collection: document.getElementById('collection').value,
+    Event: document.getElementById('event').value,
+    StartDate: document.getElementById('startDate').value,
+    StartTime: document.getElementById('startTime').value,
+    Duration: document.getElementById('duration').value,
+    SubEvent_1: document.getElementById('sub1').value,
+    SubEvent_2: document.getElementById('sub2').value,
+    SubEvent_3: document.getElementById('sub3').value,
+    Rating: document.getElementById('rating').value,
+    Notes: document.getElementById('notes').value,
+    Photo: document.getElementById('photoUrls').value
+  };
 
-  // small delay and clear status
-  setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+  console.log('Form data prepared:', data);
+  submitEvent(data);
 });
+
 </script>
 </body>
 </html>
