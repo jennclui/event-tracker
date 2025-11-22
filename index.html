@@ -1,0 +1,334 @@
+<!--
+index.html
+Purpose: Grandma's Day Tracker - Meal entry (Breakfast, Lunch, Dinner, Snack)
+Instructions: Replace WEB_APP_URL with your Apps Script Web App URL.
+Host on GitHub Pages for mobile use.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Grandma's Day Tracker</title>
+<style>
+  /* Mobile-first styling */
+  :root {
+    --bg: #f7f8fb;
+    --card: #ffffff;
+    --accent: #1565c0;
+    --accent-2: #2e7d32;
+    --muted: #666;
+    --radius: 12px;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Helvetica Neue", Arial;}
+  body{background:var(--bg);color:#111}
+  .container{max-width:1100px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  header h1{font-size:18px;margin:0}
+  .grid{display:flex;flex-direction:column;gap:12px}
+  /* card style */
+  .card{background:var(--card);padding:12px;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+  .card h2{margin:0 0 10px;font-size:16px}
+  .buttons{display:flex;gap:8px;flex-wrap:wrap}
+  .btn {
+    flex:1 1 48%;
+    min-width:140px;
+    padding:12px;
+    border-radius:10px;
+    border:0;
+    color:white;
+    font-size:15px;
+    text-align:center;
+    display:inline-block;
+  }
+  .btn.breakfast{background:linear-gradient(180deg,#1976d2,#135ba6)}
+  .btn.lunch{background:linear-gradient(180deg,#2e7d32,#256028)}
+  .btn.dinner{background:linear-gradient(180deg,#6a1b9a,#4a0f6b)}
+  .btn.snack{background:linear-gradient(180deg,#ff8f00,#c76b00)}
+  .small{font-size:13px;color:var(--muted);margin-bottom:6px}
+  /* modal */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:1000}
+  .modal{width:100%;max-width:720px;background:var(--card);border-radius:12px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,0.3);max-height:92vh;overflow:auto}
+  .modal .modal-header{display:flex;align-items:center;justify-content:space-between}
+  .close-btn{background:none;border:0;font-size:20px;cursor:pointer}
+  label{display:block;margin-top:10px;font-size:13px;color:#222}
+  input[type="date"], input[type="time"], input[type="text"], select {
+    width:100%;padding:10px;border-radius:8px;border:1px solid #e0e0e0;margin-top:6px;font-size:15px;background:#fff;box-sizing:border-box;
+  }
+  /* rich text editor area */
+  .rte {
+    border:1px solid #e0e0e0;border-radius:8px;padding:10px;min-height:100px;background:#fff;margin-top:6px;
+    overflow:auto;
+  }
+  .toolbar{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .tool-btn{padding:6px 8px;border-radius:6px;border:1px solid #ddd;background:#fafafa;cursor:pointer;font-size:13px}
+  .file-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .file-row input[type=file]{font-size:14px}
+  .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .actions .cancel{background:#efefef;border:0;padding:10px 14px;border-radius:8px}
+  .actions .submit{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px}
+  .status{margin-top:10px;font-size:14px;color:var(--muted)}
+  /* responsive layout for 4 columns on larger screens */
+  @media(min-width:720px){
+    .grid{flex-direction:row}
+    .card{flex:1}
+    .btn{flex:1 1 100%}
+    .buttons{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Grandma's Day Tracker</h1>
+      <div class="small">Tap to log an event</div>
+    </header>
+
+    <div class="grid">
+      <!-- Column 1: Meals -->
+      <div class="card" id="mealsCard">
+        <h2>Meals</h2>
+        <div class="small">Tap a meal to start an entry</div>
+
+        <div class="buttons" id="mealButtons">
+          <button class="btn breakfast" data-meal="Breakfast">Breakfast</button>
+          <button class="btn lunch" data-meal="Lunch">Lunch</button>
+          <button class="btn dinner" data-meal="Dinner">Dinner</button>
+          <button class="btn snack" data-meal="Snack">Snack</button>
+        </div>
+      </div>
+
+      <!-- placeholder cards for other forms (cards 2..4) -->
+      <div class="card"><h2>Bathroom Event</h2><div class="small">Tap to open</div></div>
+      <div class="card"><h2>Sleep & Rest</h2><div class="small">Tap to open</div></div>
+      <div class="card"><h2>Engagement / Other</h2><div class="small">Tap to open</div></div>
+    </div>
+  </div>
+
+  <!-- Modal backdrop -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div>
+          <strong id="modalTitle">Meal</strong>
+          <div class="small" id="modalSub">Logging</div>
+        </div>
+        <button class="close-btn" id="modalClose" aria-label="Close">✕</button>
+      </div>
+
+      <div style="margin-top:8px">
+        <label for="entryDate">Date</label>
+        <input id="entryDate" type="date" />
+
+        <label for="entryTime">Time</label>
+        <input id="entryTime" type="time" />
+
+        <label for="caregiver">Caregiver name (optional)</label>
+        <input id="caregiver" type="text" placeholder="Your name" />
+
+        <label>Notes (rich text)</label>
+        <div class="toolbar" aria-hidden="true">
+          <button class="tool-btn" data-cmd="bold"><strong>B</strong></button>
+          <button class="tool-btn" data-cmd="italic"><em>I</em></button>
+          <button class="tool-btn" data-cmd="underline"><u>U</u></button>
+          <button class="tool-btn" data-cmd="undo">↶</button>
+          <button class="tool-btn" data-cmd="redo">↷</button>
+        </div>
+        <div id="notesRTE" class="rte" contenteditable="true" aria-label="Notes editor" placeholder="Add notes..."></div>
+
+        <label for="photo">Photo (optional)</label>
+        <div class="file-row">
+          <input id="photoInput" type="file" accept="image/*" capture="environment" />
+          <div id="filePreview" class="small" style="max-width:60%"></div>
+        </div>
+
+        <div class="actions">
+          <button class="cancel" id="cancelBtn">Cancel</button>
+          <button class="submit" id="submitBtn">Submit</button>
+        </div>
+
+        <div id="status" class="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Client logic
+   - Replace WEB_APP_URL with your deployed Apps Script Web App URL
+   - The app will POST JSON: { eventCollection, date, time, type, caregiver, notesHtml, imageBase64, mimeType, filename }
+*/
+
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwp8gumFoOKsEdmJKYJapKo7pR8JfCW-9L9Au1NKstcEI10SpUcWQnoQYzhY36QTHR0/exec"; // <-- REPLACE
+
+// modal elements
+const backdrop = document.getElementById('modalBackdrop');
+const modalTitle = document.getElementById('modalTitle');
+const modalSub = document.getElementById('modalSub');
+const modalClose = document.getElementById('modalClose');
+const entryDate = document.getElementById('entryDate');
+const entryTime = document.getElementById('entryTime');
+const caregiverEl = document.getElementById('caregiver');
+const notesRTE = document.getElementById('notesRTE');
+const photoInput = document.getElementById('photoInput');
+const filePreview = document.getElementById('filePreview');
+const cancelBtn = document.getElementById('cancelBtn');
+const submitBtn = document.getElementById('submitBtn');
+const statusEl = document.getElementById('status');
+
+let currentMealType = null;
+let currentClickTimestamp = null; // preserve original click time
+
+// utility: set date/time inputs to now (or to given Date)
+function setDateTimeInputs(dateObj) {
+  const d = dateObj || new Date();
+  entryDate.value = d.toISOString().slice(0,10);
+  // local time part e.g., 13:05
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  entryTime.value = `${hh}:${mm}`;
+}
+
+// open modal for given meal
+function openMealModal(meal) {
+  currentMealType = meal;
+  modalTitle.textContent = `Meal: ${meal}`;
+  modalSub.textContent = `Logging ${meal}`;
+  // set current click time as default
+  currentClickTimestamp = new Date();
+  setDateTimeInputs(currentClickTimestamp);
+  caregiverEl.value = '';
+  notesRTE.innerHTML = ''; // clear rich-text
+  photoInput.value = '';
+  filePreview.textContent = '';
+  statusEl.textContent = '';
+  backdrop.style.display = 'flex';
+  // focus first input on small delay
+  setTimeout(()=> caregiverEl.focus(), 250);
+}
+
+// close modal
+function closeModal() {
+  backdrop.style.display = 'none';
+}
+
+// meal buttons binding
+document.getElementById('mealButtons').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-meal]');
+  if (!btn) return;
+  const meal = btn.getAttribute('data-meal');
+  openMealModal(meal);
+});
+
+// close handlers
+modalClose.addEventListener('click', closeModal);
+cancelBtn.addEventListener('click', closeModal);
+backdrop.addEventListener('click', (ev) => {
+  if (ev.target === backdrop) closeModal(); // click outside modal
+});
+
+// simple toolbar actions for contenteditable
+document.querySelectorAll('.tool-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const cmd = b.getAttribute('data-cmd');
+    if (cmd === 'undo' || cmd === 'redo') {
+      document.execCommand(cmd);
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    notesRTE.focus();
+  });
+});
+
+// preview file name
+photoInput.addEventListener('change', () => {
+  const f = photoInput.files && photoInput.files[0];
+  if (!f) { filePreview.textContent = ''; return; }
+  filePreview.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
+});
+
+// read file as DataURL
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+// submit handler
+submitBtn.addEventListener('click', async () => {
+  statusEl.textContent = '';
+  if (!currentMealType) { statusEl.textContent = 'No meal selected.'; return; }
+
+  // read date/time from inputs
+  const dateVal = entryDate.value; // YYYY-MM-DD
+  const timeVal = entryTime.value; // HH:MM
+  if (!dateVal || !timeVal) { statusEl.textContent = 'Please ensure date and time are set.'; return; }
+
+  const caregiver = caregiverEl.value.trim();
+  // get notes as HTML from RTE
+  const notesHtml = notesRTE.innerHTML.trim();
+
+  // handle file
+  const file = photoInput.files && photoInput.files[0];
+  let imageBase64 = null, mimeType = null, filename = null;
+  if (file) {
+    // size limit
+    const MAX_MB = 10;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      statusEl.textContent = `Image too large. Max ${MAX_MB} MB.`;
+      return;
+    }
+    const dataUrl = await readFileAsDataURL(file); // data:[mime];base64,xxxx
+    const comma = dataUrl.indexOf(',');
+    imageBase64 = dataUrl.slice(comma + 1);
+    mimeType = file.type || 'image/jpeg';
+    filename = file.name || (`photo_${Date.now()}.jpg`);
+  }
+
+  // Build final ISO timestamp (combine date & time using local timezone)
+  const combined = new Date(`${dateVal}T${timeVal}:00`);
+  // If parsing fails, fallback to now
+  const isoTimestamp = isNaN(combined.getTime()) ? new Date().toISOString() : combined.toISOString();
+
+  const payload = {
+    eventCollection: 'Meal',
+    date: dateVal,
+    time: timeVal,
+    timestamp: isoTimestamp,
+    type: currentMealType,
+    caregiver: caregiver,
+    notesHtml: notesHtml,
+    imageBase64: imageBase64,
+    mimeType: mimeType,
+    filename: filename
+    // optionally add secret token here for simple authentication
+  };
+
+  statusEl.textContent = 'Submitting...';
+
+  try {
+    const resp = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      statusEl.textContent = `Error: ${text || resp.status}`;
+    } else {
+      statusEl.textContent = 'Saved';
+      // small success feedback then close
+      setTimeout(() => {
+        closeModal();
+      }, 700);
+    }
+  } catch (err) {
+    statusEl.textContent = 'Network error: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
