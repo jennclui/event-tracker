@@ -1,13 +1,12 @@
 // ---------------------------
 // Grandma's Day Tracker - Meal Form
-// Works with your custom HTML structure
 // ---------------------------
 
+console.log("Grandma's Day Tracker JS is running");
+
 document.addEventListener("DOMContentLoaded", () => {
-  // DOM Elements
   const mealButtons = document.querySelectorAll("#mealButtons button");
   const modalBackdrop = document.getElementById("modalBackdrop");
-  const modal = document.getElementById("modal");
   const modalTitle = document.getElementById("modalTitle");
   const modalSub = document.getElementById("modalSub");
   const modalClose = document.getElementById("modalClose");
@@ -28,18 +27,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedMealType = "";
   let selectedFile = null;
 
-  // ---------------------------
-  // Open modal when meal button clicked
+  console.log("Meal buttons found:", mealButtons.length);
+
+  // Open modal
   mealButtons.forEach(btn => {
     btn.addEventListener("click", () => {
       selectedMealType = btn.dataset.meal;
+      console.log("Clicked:", selectedMealType);
 
       modalTitle.textContent = `Meal: ${selectedMealType}`;
       modalSub.textContent = "Logging";
 
-      // Auto-set date and time
       const now = new Date();
-      entryDate.value = now.toISOString().slice(0, 10);
+      entryDate.value = now.toISOString().slice(0,10);
       entryTime.value = now.toTimeString().slice(0,5);
 
       caregiverInput.value = "";
@@ -52,40 +52,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ---------------------------
   // Close modal
   modalClose.addEventListener("click", () => modalBackdrop.classList.remove("visible"));
   cancelBtn.addEventListener("click", () => modalBackdrop.classList.remove("visible"));
 
-  // ---------------------------
-  // Rich Text Editor toolbar
+  // Rich Text toolbar
   toolbarButtons.forEach(btn => {
     btn.addEventListener("click", () => {
       const cmd = btn.dataset.cmd;
-      if (cmd === "undo" || cmd === "redo") {
-        document.execCommand(cmd, false, null);
-      } else {
-        document.execCommand(cmd, false, null);
-      }
+      document.execCommand(cmd, false, null);
     });
   });
 
-  // ---------------------------
   // Photo preview
   photoInput.addEventListener("change", (e) => {
     selectedFile = e.target.files[0];
-    if (selectedFile) {
-      filePreview.textContent = selectedFile.name;
-    } else {
-      filePreview.textContent = "";
-    }
+    filePreview.textContent = selectedFile ? selectedFile.name : "";
   });
 
-  // ---------------------------
-  // Submit form
+  // Submit
   submitBtn.addEventListener("click", async () => {
     statusDiv.textContent = "Submitting...";
-
     const payload = {
       collection: "Meals",
       date: entryDate.value,
@@ -101,11 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectedFile) {
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const base64Data = e.target.result.split(",")[1];
-        payload.imageBase64 = base64Data;
+        payload.imageBase64 = e.target.result.split(",")[1];
         payload.filename = selectedFile.name;
         payload.mime = selectedFile.type;
-
         await sendToGoogleSheet(payload);
       };
       reader.readAsDataURL(selectedFile);
@@ -114,8 +99,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ---------------------------
-  // Send data to Google Apps Script Web App
   async function sendToGoogleSheet(data) {
     try {
       const response = await fetch("https://script.google.com/macros/s/AKfycbwp8gumFoOKsEdmJKYJapKo7pR8JfCW-9L9Au1NKstcEI10SpUcWQnoQYzhY36QTHR0/exec", {
@@ -123,7 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-
       const result = await response.json();
       console.log("Submission success:", result);
       statusDiv.textContent = "Submitted successfully!";
@@ -137,3 +119,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  Logger.log(data); // check incoming payload
+  return ContentService.createTextOutput(JSON.stringify({ status: "ok", data: data }))
+                       .setMimeType(ContentService.MimeType.JSON);
+}

@@ -1,81 +1,10 @@
-<!--
-index.html
-Purpose: Grandma's Day Tracker - Meal entry (Breakfast, Lunch, Dinner, Snack)
-Instructions: Replace WEB_APP_URL with your Apps Script Web App URL.
-Host on GitHub Pages for mobile use.
--->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Grandma's Day Tracker</title>
-<style>
-  /* Mobile-first styling */
-  :root {
-    --bg: #f7f8fb;
-    --card: #ffffff;
-    --accent: #1565c0;
-    --accent-2: #2e7d32;
-    --muted: #666;
-    --radius: 12px;
-  }
-  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Helvetica Neue", Arial;}
-  body{background:var(--bg);color:#111}
-  .container{max-width:1100px;margin:0 auto;padding:16px}
-  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-  header h1{font-size:18px;margin:0}
-  .grid{display:flex;flex-direction:column;gap:12px}
-  /* card style */
-  .card{background:var(--card);padding:12px;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,0.06)}
-  .card h2{margin:0 0 10px;font-size:16px}
-  .buttons{display:flex;gap:8px;flex-wrap:wrap}
-  .btn {
-    flex:1 1 48%;
-    min-width:140px;
-    padding:12px;
-    border-radius:10px;
-    border:0;
-    color:white;
-    font-size:15px;
-    text-align:center;
-    display:inline-block;
-  }
-  .btn.breakfast{background:linear-gradient(180deg,#1976d2,#135ba6)}
-  .btn.lunch{background:linear-gradient(180deg,#2e7d32,#256028)}
-  .btn.dinner{background:linear-gradient(180deg,#6a1b9a,#4a0f6b)}
-  .btn.snack{background:linear-gradient(180deg,#ff8f00,#c76b00)}
-  .small{font-size:13px;color:var(--muted);margin-bottom:6px}
-  /* modal */
-  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:1000}
-  .modal{width:100%;max-width:720px;background:var(--card);border-radius:12px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,0.3);max-height:92vh;overflow:auto}
-  .modal .modal-header{display:flex;align-items:center;justify-content:space-between}
-  .close-btn{background:none;border:0;font-size:20px;cursor:pointer}
-  label{display:block;margin-top:10px;font-size:13px;color:#222}
-  input[type="date"], input[type="time"], input[type="text"], select {
-    width:100%;padding:10px;border-radius:8px;border:1px solid #e0e0e0;margin-top:6px;font-size:15px;background:#fff;box-sizing:border-box;
-  }
-  /* rich text editor area */
-  .rte {
-    border:1px solid #e0e0e0;border-radius:8px;padding:10px;min-height:100px;background:#fff;margin-top:6px;
-    overflow:auto;
-  }
-  .toolbar{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}
-  .tool-btn{padding:6px 8px;border-radius:6px;border:1px solid #ddd;background:#fafafa;cursor:pointer;font-size:13px}
-  .file-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
-  .file-row input[type=file]{font-size:14px}
-  .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
-  .actions .cancel{background:#efefef;border:0;padding:10px 14px;border-radius:8px}
-  .actions .submit{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px}
-  .status{margin-top:10px;font-size:14px;color:var(--muted)}
-  /* responsive layout for 4 columns on larger screens */
-  @media(min-width:720px){
-    .grid{flex-direction:row}
-    .card{flex:1}
-    .btn{flex:1 1 100%}
-    .buttons{flex-direction:column}
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grandma's Day Tracker</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="container">
@@ -98,14 +27,14 @@ Host on GitHub Pages for mobile use.
         </div>
       </div>
 
-      <!-- placeholder cards for other forms (cards 2..4) -->
+      <!-- placeholder cards -->
       <div class="card"><h2>Bathroom Event</h2><div class="small">Tap to open</div></div>
       <div class="card"><h2>Sleep & Rest</h2><div class="small">Tap to open</div></div>
       <div class="card"><h2>Engagement / Other</h2><div class="small">Tap to open</div></div>
     </div>
   </div>
 
-  <!-- Modal backdrop -->
+  <!-- Modal -->
   <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal" id="modal">
       <div class="modal-header">
@@ -152,6 +81,6 @@ Host on GitHub Pages for mobile use.
     </div>
   </div>
 
-<script src="js/app.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
