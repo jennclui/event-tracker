@@ -1,120 +1,141 @@
-<!--
-SUMMARY:
-Full-page Event Logger UI for GitHub Pages.
-- Start button logs a Timestamp and reveals the full form.
-- Required fields: Collection, Event.
-- If StartDate is provided, StartTime is required.
-- Photos uploaded are sent to the Apps Script with action 'uploadImage' and stored in the Drive folder for the selected Collection.
-- After upload, an event payload with comma-separated photo URLs is posted to the Apps Script with action 'submitEvent'.
-- Cancel clears all form state and hides the form.
-
-CONFIG: Replace POST_URL with your Apps Script web app URL if different.
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Event Logger - Full Page</title>
-<style>
-  body { font-family: Arial, sans-serif; max-width: 900px; margin: 16px auto; padding: 12px; }
-  h1 { margin-bottom: 8px; }
-  .hidden { }
-  label { display: block; margin: 12px 0 6px; }
-  input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-  .row { display: flex; gap: 12px; }
-  .col { flex: 1; }
-  .buttons { margin-top: 18px; display: flex; gap: 10px; }
-  button { padding: 10px 14px; }
-  #photoPreview img { max-width: 140px; margin-right: 8px; margin-bottom: 8px; display: inline-block; vertical-align: top; }
-  #status { margin-top: 12px; color: #333; }
-</style>
+  <meta charset="UTF-8">
+  <title>Event Logger</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    #eventFormContainer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.6); overflow-y: auto; }
+    #eventForm { background: #fff; margin: 50px auto; padding: 20px; width: 90%; max-width: 600px; border-radius: 8px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 15px; padding: 10px 15px; }
+    #buttons { display: flex; justify-content: space-between; }
+  </style>
 </head>
 <body>
 
-<h1>Event Logger - V2</h1>
+  <button id="startButton">Start New Event</button>
 
-<!-- Start button -->
-<div id="startWrap">
-  <button id="startBtn">Start New Event</button>
-</div>
+  <div id="eventFormContainer">
+    <div id="eventForm">
+      <h2>New Event Entry V3</h2>
 
-<!-- Full page form -->
-<div id="formWrap" class="hidden">
-  <form id="eventForm">
-    <!-- Internal timestamp when the user clicked Start -->
-    <input type="hidden" id="timestampInput" name="timestamp">
+      <label>Collection (required)</label>
+      <select id="collection" required>
+        <option value="">--Select Collection--</option>
+        <option value="Meal">Meal</option>
+        <option value="Bathroom">Bathroom</option>
+        <option value="Rest">Rest</option>
+        <option value="Activity">Activity</option>
+      </select>
 
-    <div class="row">
-      <div class="col">
-        <label for="startDate">Start Date (optional)</label>
-        <input id="startDate" type="date" />
-      </div>
-      <div class="col">
-        <label for="startTime">Start Time (required if date is used)</label>
-        <input id="startTime" type="time" />
-      </div>
-    </div>
+      <label>Event (required)</label>
+      <input type="text" id="event" placeholder="Event name" required>
 
-    <label for="duration">Duration (minutes)</label>
-    <input id="duration" type="number" min="0" placeholder="e.g., 90" />
+      <label>SubEvent 1</label>
+      <input type="text" id="sub1">
 
-    <div class="row">
-      <div class="col">
-        <label for="collection">Collection (required)</label>
-        <select id="collection" required>
-          <option value="">Select collection</option>
-          <option>Meal</option>
-          <option>Bathroom</option>
-          <option>Rest</option>
-          <option>Activity</option>
-        </select>
-      </div>
-      <div class="col">
-        <label for="eventType">Event (required)</label>
-        <input id="eventType" type="text" required placeholder="Event type" />
-      </div>
-    </div>
+      <label>SubEvent 2</label>
+      <input type="text" id="sub2">
 
-    <div class="row">
-      <div class="col">
-        <label for="sub1">SubEvent 1</label>
-        <input id="sub1" type="text" />
-      </div>
-      <div class="col">
-        <label for="sub2">SubEvent 2</label>
-        <input id="sub2" type="text" />
+      <label>SubEvent 3</label>
+      <input type="text" id="sub3">
+
+      <label>Duration (minutes)</label>
+      <input type="number" id="duration" min="0">
+
+      <label>Start Date</label>
+      <input type="date" id="startDate">
+
+      <label>Start Time</label>
+      <input type="time" id="startTime">
+
+      <label>Rating</label>
+      <input type="text" id="rating">
+
+      <label>Notes</label>
+      <textarea id="notes" rows="3"></textarea>
+
+      <label>Photo URLs (comma-separated)</label>
+      <textarea id="photoUrls" rows="2"></textarea>
+
+      <div id="buttons">
+        <button id="submitButton">Submit Event</button>
+        <button id="cancelButton" type="button">Cancel</button>
       </div>
     </div>
-
-    <label for="sub3">SubEvent 3</label>
-    <input id="sub3" type="text" />
-
-    <label for="rating">Rating</label>
-    <input id="rating" type="text" />
-
-    <label for="notes">Notes</label>
-    <textarea id="notes" rows="3"></textarea>
-
-    <label for="photos">Photos (choose one or more files)</label>
-    <input id="photos" type="file" multiple accept="image/*" />
-
-    <div id="photoPreview"></div>
-
-    <div class="buttons">
-      <button id="submitBtn" type="submit">Submit Event</button>
-      <button id="cancelBtn" type="button">Cancel</button>
-    </div>
-
-    <div id="status" role="status" aria-live="polite"></div>
-  </form>
-</div>
+  </div>
 
 <script>
 const POST_URL = 'https://script.google.com/macros/s/AKfycbwfMT-H423YopgSpihB3kLORaAKCRkDGs35Wm12uIE0sUuivigMUGhC2fRmIIOCwaOS/exec';
 
-async function submitEvent(data) {
+let timestamp = '';
+
+const startButton = document.getElementById('startButton');
+const formContainer = document.getElementById('eventFormContainer');
+const cancelButton = document.getElementById('cancelButton');
+const submitButton = document.getElementById('submitButton');
+
+startButton.addEventListener('click', () => {
+  timestamp = new Date().toISOString();
+  console.log('Event started at:', timestamp);
+  formContainer.style.display = 'block';
+});
+
+cancelButton.addEventListener('click', () => {
+  // Clear all fields
+  document.getElementById('collection').value = '';
+  document.getElementById('event').value = '';
+  document.getElementById('sub1').value = '';
+  document.getElementById('sub2').value = '';
+  document.getElementById('sub3').value = '';
+  document.getElementById('duration').value = '';
+  document.getElementById('startDate').value = '';
+  document.getElementById('startTime').value = '';
+  document.getElementById('rating').value = '';
+  document.getElementById('notes').value = '';
+  document.getElementById('photoUrls').value = '';
+  formContainer.style.display = 'none';
+  timestamp = '';
+  console.log('Form canceled');
+});
+
+submitButton.addEventListener('click', async () => {
+  const collection = document.getElementById('collection').value;
+  const eventType = document.getElementById('event').value;
+
+  if (!collection || !eventType) {
+    alert('Collection and Event are required.');
+    return;
+  }
+
+  const startDate = document.getElementById('startDate').value;
+  const startTime = document.getElementById('startTime').value;
+  if (startDate && !startTime) {
+    alert('Start Time is required if Start Date is set.');
+    return;
+  }
+
+  const data = {
+    action: 'submitEvent',
+    Timestamp: timestamp,
+    Date: new Date().toISOString().split('T')[0],
+    Time: new Date().toISOString().split('T')[1].split('.')[0],
+    StartDate: startDate,
+    StartTime: startTime,
+    Duration: document.getElementById('duration').value,
+    Collection: collection,
+    Event: eventType,
+    SubEvent_1: document.getElementById('sub1').value,
+    SubEvent_2: document.getElementById('sub2').value,
+    SubEvent_3: document.getElementById('sub3').value,
+    Rating: document.getElementById('rating').value,
+    Notes: document.getElementById('notes').value,
+    Photo: document.getElementById('photoUrls').value
+  };
+
   console.log('Submitting event data:', data);
 
   try {
@@ -125,12 +146,12 @@ async function submitEvent(data) {
     });
 
     console.log('Raw response:', response);
-
     const json = await response.json();
     console.log('Parsed response:', json);
 
     if (json.status === 'success') {
       alert('Event submitted successfully!');
+      cancelButton.click(); // reset form after submit
     } else {
       alert('Error: ' + json.message);
     }
@@ -138,30 +159,8 @@ async function submitEvent(data) {
     console.error('Fetch error:', err);
     alert('Fetch failed: ' + err.message);
   }
-}
-
-// Example usage: triggered on form submit
-document.getElementById('submitButton').addEventListener('click', function() {
-  const data = {
-    action: 'submitEvent',
-    Timestamp: new Date().toISOString(),
-    Collection: document.getElementById('collection').value,
-    Event: document.getElementById('event').value,
-    StartDate: document.getElementById('startDate').value,
-    StartTime: document.getElementById('startTime').value,
-    Duration: document.getElementById('duration').value,
-    SubEvent_1: document.getElementById('sub1').value,
-    SubEvent_2: document.getElementById('sub2').value,
-    SubEvent_3: document.getElementById('sub3').value,
-    Rating: document.getElementById('rating').value,
-    Notes: document.getElementById('notes').value,
-    Photo: document.getElementById('photoUrls').value
-  };
-
-  console.log('Form data prepared:', data);
-  submitEvent(data);
 });
-
 </script>
+
 </body>
 </html>
