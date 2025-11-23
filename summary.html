@@ -254,7 +254,7 @@
           card.classList.add(event['Event Collection'].toLowerCase().replace(' ', '-') + '-event');
         }
     
-        const displayTime = event.Time || '';
+        const displayTime = formatTimeForSummary(event.Time);
         const titleDiv = document.createElement('div');
         titleDiv.className = 'card-title-collection';
         titleDiv.textContent = `${displayTime}: ${event['Event Collection'] || ''}`;
