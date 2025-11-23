@@ -69,222 +69,244 @@
     </select>
 
     <!-- Summary Card -->
-    <div id="summaryCard" class="card" style="border-left:5px solid #4CAF50; margin-bottom:20px;">
-      <div class="card-title-collection" style="background-color:#4CAF50;">Summary</div>
-      <div class="card-body">
-        <div class="card-right">
-          <p>Wake Up: <span id="summary-wakeup">--:--</span></p>
-          <p>Breakfast: <span id="summary-breakfast">--:--</span></p>
-          <p>Lunch: <span id="summary-lunch">--:--</span></p>
-          <p>Snack: <span id="summary-snack">--:--</span></p>
-          <p>Dinner: <span id="summary-dinner">--:--</span></p>
-          <p>Shower: <span id="summary-shower">--:--</span></p>
-          <p>Bedtime: <span id="summary-bedtime">--:--</span></p>
-          <p>Total Bathroom Visits Today: <span id="summary-bathroom-today">0</span></p>
-          <p>Bathroom Visits Between Bedtime & Wakeup: <span id="summary-bathroom-night">0</span></p>
+    <div id="summaryCard" class="card" style="border-left:5px solid #4CAF50; margin-bottom:20px; display:none;">
+        <div class="card-title-collection" style="background-color:#4CAF50;">Summary</div>
+        <div class="card-body">
+          <div class="card-right">
+            <p>Wake Up: <span id="summary-wakeup">--:--</span></p>
+            <p>Breakfast: <span id="summary-breakfast">--:--</span></p>
+            <p>Lunch: <span id="summary-lunch">--:--</span></p>
+            <p>Snack: <span id="summary-snack">--:--</span></p>
+            <p>Dinner: <span id="summary-dinner">--:--</span></p>
+            <p>Shower: <span id="summary-shower">--:--</span></p>
+            <p>Bedtime: <span id="summary-bedtime">--:--</span></p>
+            <p>Total Bathroom Visits Today: <span id="summary-bathroom-today">0</span></p>
+            <p>Bathroom Visits Between Bedtime & Wakeup: <span id="summary-bathroom-night">0</span></p>
+          </div>
         </div>
       </div>
-    </div>
 
     <div id="cardsContainer"></div>
 </div>
 
 <script>
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQjB7tT56hx9Xnyq8smG6ujPDxoMQ3LC-jR8dZspAoGaVoV-iE8AUHrmGYE_SUPxzkUo8moW8P1SRQ0/pub?gid=74004597&single=true&output=csv';
-
-const eventImages = {
-  'Meal Event': { 'Breakfast': './img/breakfast.png', 'Lunch': './img/lunch.png', 'Dinner': './img/dinner.png', 'Snack': './img/snack.png', 'default': './img/meal.png' },
-  'Bathroom Event': { 'Bowel Movement': './img/toilet.png', 'Urination': '/img/toilet.png', 'default': './img/toilet.png' },
-  'Rest Event': { 'Wakeup': './img/wakeup.png', 'Nap': './img/nap.png', 'Bedtime': './img/wakeup.png', 'Rest': './img/rest.png', 'default': './img/rest.png' },
-  'Engagement Event': { 'Video Call': './img/video.png', 'Watched Youtube': './img/youtube.png', 'Exercise': './img/exercise.png', 'default': './img/engagement.png' }
-};
-
-// Fetch CSV
-async function fetchData() {
-  const res = await fetch(csvUrl);
-  const text = await res.text();
-  return new Promise(resolve => {
-    Papa.parse(text, {
-      header: true,
-      skipEmptyLines: true,
-      complete: results => {
-        const data = results.data.map(row => {
-          const cleanRow = {};
-          Object.keys(row).forEach(key => { cleanRow[key.trim()] = row[key] ? row[key].trim() : ''; });
-          return cleanRow;
-        });
-        resolve(data);
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQjB7tT56hx9Xnyq8smG6ujPDxoMQ3LC-jR8dZspAoGaVoV-iE8AUHrmGYE_SUPxzkUo8moW8P1SRQ0/pub?gid=74004597&single=true&output=csv';
+    
+    const eventImages = {
+      'Meal Event': {
+        'Breakfast': './img/breakfast.png',
+        'Lunch': './img/lunch.png',
+        'Dinner': './img/dinner.png',
+        'Snack': './img/snack.png',
+        'default': './img/breakfast.png'
+      },
+      'Bathroom Event': {
+        'Bowel Movement': './img/toilet.png',
+        'Urination': './img/toilet.png',
+        'default': './img/toilet.png'
+      },
+      'Rest Event': {
+        'Wakeup': './img/wakeup.png',
+        'Nap': './img/nap.png',
+        'Bedtime': './img/wakeup.png',
+        'Shower': './img/shower.png',
+        'Rest': './img/rest.png',
+        'default': './img/rest.png'
+      },
+      'Engagement Event': {
+        'Video Call': './img/video.png',
+        'Watched Youtube': './img/youtube.png',
+        'Exercise': './img/exercise.png',
+        'default': './img/engagement.png'
       }
-    });
-  });
-}
-
-// Populate date dropdown
-function populateDropdown(data) {
-  const dropdown = document.getElementById('dateDropdown');
-  const dates = Array.from(new Set(data.map(d => d.Date))).sort();
-  dates.forEach(date => {
-    const option = document.createElement('option');
-    option.value = date;
-    option.textContent = date;
-    dropdown.appendChild(option);
-  });
-}
-
-// Format HH:MM to 12h AM/PM
-function formatTime(t) {
-  if(!t) return '--:--';
-  const parts = t.split(':');
-  if(parts.length < 2) return t;
-  let hour = parseInt(parts[0]);
-  const minute = parts[1];
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12 || 12;
-  return `${hour}:${minute} ${ampm}`;
-}
-
-// Parse time string into Date object on a given date
-function parseTime(dateStr, timeStr) {
-  if(!timeStr) return null;
-  const parts = timeStr.split(':');
-  if(parts.length < 2) return null;
-  let hour = parseInt(parts[0]);
-  const minute = parseInt(parts[1]);
-  return new Date(dateStr + 'T' + (hour<10?'0'+hour:hour) + ':' + minute + ':00');
-}
-
-// Render cards & summary
-function renderCards(data, selectedDate) {
-  const container = document.getElementById('cardsContainer');
-  container.innerHTML = '';
-
-  const filtered = data
-    .filter(d => d.Date === selectedDate)
-    .sort((a,b) => (a.Time || '00:00:00').localeCompare(b.Time || '00:00:00'));
-
-  // --- Populate Summary ---
-  const summary = {
-    wakeup: formatTime(filtered.find(e => e['Event Collection']==='Rest Event' && e['Event Type']==='Wakeup')?.Time),
-    breakfast: formatTime(filtered.find(e => e['Event Collection']==='Meal Event' && e['Event Type']==='Breakfast')?.Time),
-    lunch: formatTime(filtered.find(e => e['Event Collection']==='Meal Event' && e['Event Type']==='Lunch')?.Time),
-    snack: formatTime(filtered.find(e => e['Event Collection']==='Meal Event' && e['Event Type']==='Snack')?.Time),
-    dinner: formatTime(filtered.find(e => e['Event Collection']==='Meal Event' && e['Event Type']==='Dinner')?.Time),
-    shower: formatTime(filtered.find(e => e['Event Collection']==='Rest Event' && e['Event Type']==='Shower')?.Time),
-    bedtime: formatTime(filtered.find(e => e['Event Collection']==='Rest Event' && e['Event Type']==='Bedtime')?.Time)
-  };
-
-  document.getElementById('summary-wakeup').textContent = summary.wakeup;
-  document.getElementById('summary-breakfast').textContent = summary.breakfast;
-  document.getElementById('summary-lunch').textContent = summary.lunch;
-  document.getElementById('summary-snack').textContent = summary.snack;
-  document.getElementById('summary-dinner').textContent = summary.dinner;
-  document.getElementById('summary-shower').textContent = summary.shower;
-  document.getElementById('summary-bedtime').textContent = summary.bedtime;
-
-  // --- Bathroom visit counts ---
-  const bathroomVisitsToday = filtered.filter(e => e['Event Collection']==='Bathroom Event').length;
-
-  // Yesterday's bedtime
-  const yesterdayDate = new Date(selectedDate);
-  yesterdayDate.setDate(yesterdayDate.getDate()-1);
-  const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-  const yesterdayBedtime = data
-    .filter(e => e.Date===yesterdayStr && e['Event Collection']==='Rest Event' && e['Event Type']==='Bedtime')
-    .map(e => parseTime(yesterdayStr, e.Time))[0]; // may be undefined
-
-  const todayWake = filtered
-    .filter(e => e['Event Collection']==='Rest Event' && e['Event Type']==='Wakeup')
-    .map(e => parseTime(selectedDate, e.Time))[0]; // may be undefined
-
-  let bathroomVisitsNight = 0;
-  filtered.forEach(e => {
-    if(e['Event Collection']!=='Bathroom Event') return;
-    const t = parseTime(selectedDate, e.Time);
-    if(!t) return;
-    if(yesterdayBedtime && todayWake) {
-      if(t >= yesterdayBedtime && t <= todayWake) bathroomVisitsNight++;
-    } else if(todayWake) {
-      if(t <= todayWake) bathroomVisitsNight++;
-    }
-  });
-
-  document.getElementById('summary-bathroom-today').textContent = bathroomVisitsToday;
-  document.getElementById('summary-bathroom-night').textContent = bathroomVisitsNight;
-
-  // --- Event cards ---
-  filtered.forEach(event => {
-    const card = document.createElement('div');
-    card.classList.add('card');
-    if(event['Event Collection']) {
-      card.classList.add(event['Event Collection'].toLowerCase().replace(' ', '-') + '-event');
-    }
-
-    // Format display time
-    let displayTime = event.Time || '';
-    if(displayTime) {
-      const parts = displayTime.split(':');
-      if(parts.length >= 2) displayTime = parts[0]+':'+parts[1]+(displayTime.toUpperCase().includes('AM')?' AM':' PM');
-    }
-
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'card-title-collection';
-    titleDiv.textContent = `${displayTime}: ${event['Event Collection'] || ''}`;
-    card.appendChild(titleDiv);
-
-    const bodyDiv = document.createElement('div');
-    bodyDiv.className = 'card-body';
-
-    const left = document.createElement('div');
-    left.className = 'card-left';
-    let imgSrc = 'https://via.placeholder.com/80?text=Event';
-    if(event['Event Collection'] && eventImages[event['Event Collection']]) {
-      imgSrc = eventImages[event['Event Collection']][event['Event Type']] || eventImages[event['Event Collection']]['default'];
-    }
-    const img = document.createElement('img'); img.src = imgSrc; left.appendChild(img);
-
-    const right = document.createElement('div'); right.className = 'card-right';
-    const collection = event['Event Collection'];
-
-    if(collection==='Meal Event') {
-      if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
-      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
-    } else if(collection==='Bathroom Event') {
-      if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
-      if(event['Sub Event Type']) right.innerHTML += `<p><strong>Details:</strong>${event['Sub Event Type']}</p>`;
-      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
-    } else if(collection==='Rest Event') {
-      if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
-      if(event['Energy']) right.innerHTML += `<p><strong>Details:</strong>${event['Energy']}</p>`;
-      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
-    } else if(collection==='Engagement Event') {
-      if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
-      if(event['Duration']) right.innerHTML += `<p><strong>Duration:</strong>${event['Duration']}</p>`;
-      if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
-    }
-
-    if(event['Photo Links']) {
-      const photos = event['Photo Links'].split(',').map(p=>p.trim()).filter(p=>p);
-      photos.forEach((url,i)=> {
-        const a = document.createElement('a');
-        a.href = url; a.target='_blank'; a.className='photo-link'; a.textContent=`Photo ${i+1}`;
-        right.appendChild(a);
+    };
+    
+    // --- Fetch CSV Data ---
+    async function fetchData() {
+      const res = await fetch(csvUrl);
+      const text = await res.text();
+      return new Promise(resolve => {
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: results => {
+            const data = results.data.map(row => {
+              const cleanRow = {};
+              Object.keys(row).forEach(key => { cleanRow[key.trim()] = row[key] ? row[key].trim() : ''; });
+              return cleanRow;
+            });
+            resolve(data);
+          }
+        });
       });
     }
-
-    bodyDiv.appendChild(left);
-    bodyDiv.appendChild(right);
-    card.appendChild(bodyDiv);
-    container.appendChild(card);
-  });
-}
-
-// Initialize
-fetchData().then(data => {
-  populateDropdown(data);
-  document.getElementById('dateDropdown').addEventListener('change', e => {
-    renderCards(data, e.target.value);
-  });
-});
-</script>
+    
+    // --- Populate date dropdown ---
+    function populateDropdown(data) {
+      const dropdown = document.getElementById('dateDropdown');
+      const dates = Array.from(new Set(data.map(d => d.Date))).sort();
+      dates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.textContent = date;
+        dropdown.appendChild(option);
+      });
+    }
+    
+    // --- Helper: format time for summary (HH:MM AM/PM) ---
+    function formatTimeForSummary(timeStr) {
+      if (!timeStr) return '--:--';
+      const match = timeStr.match(/^(\d{1,2}:\d{2})(:\d{2})?\s*(AM|PM)$/i);
+      return match ? `${match[1]} ${match[3].toUpperCase()}` : timeStr;
+    }
+    
+    // --- Helper: collect all times for an event type ---
+    function collectTimes(events, collectionName, typeName) {
+      const times = events
+        .filter(e => e['Event Collection'] === collectionName && (!typeName || e['Event Type'] === typeName))
+        .map(e => formatTimeForSummary(e.Time))
+        .filter(t => t);
+      return times.length ? times.join(', ') : '--:--';
+    }
+    
+    // --- Convert "hh:mm AM/PM" to Date for comparisons ---
+    function parseTime(dateStr, timeStr) {
+      if (!timeStr) return null;
+      return new Date(`${dateStr} ${timeStr}`);
+    }
+    
+    // --- Render summary + event cards ---
+    function renderCards(data, selectedDate) {
+      const container = document.getElementById('cardsContainer');
+      container.innerHTML = '';
+    
+      const summaryCardEl = document.getElementById('summaryCard');
+      summaryCardEl.style.display = selectedDate ? 'block' : 'none';
+    
+      const filtered = data
+        .filter(d => d.Date === selectedDate)
+        .sort((a,b) => (a.Time || '00:00:00').localeCompare(b.Time || '00:00:00'));
+    
+      // --- Summary card ---
+      document.getElementById('summary-wakeup').textContent = collectTimes(filtered, 'Rest Event', 'Wakeup');
+      document.getElementById('summary-breakfast').textContent = collectTimes(filtered, 'Meal Event', 'Breakfast');
+      document.getElementById('summary-lunch').textContent = collectTimes(filtered, 'Meal Event', 'Lunch');
+      document.getElementById('summary-snack').textContent = collectTimes(filtered, 'Meal Event', 'Snack');
+      document.getElementById('summary-dinner').textContent = collectTimes(filtered, 'Meal Event', 'Dinner');
+      document.getElementById('summary-shower').textContent = collectTimes(filtered, 'Rest Event', 'Shower');
+      document.getElementById('summary-bedtime').textContent = collectTimes(filtered, 'Rest Event', 'Bedtime');
+    
+      // Bathroom counts
+      const bathroomVisitsToday = filtered.filter(e => e['Event Collection'] === 'Bathroom Event').length;
+    
+      // Yesterday bedtime
+      const yesterdayDate = new Date(selectedDate);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+      const yesterdayBedtimeStr = data
+        .filter(e => e.Date === yesterdayStr && e['Event Collection'] === 'Rest Event' && e['Event Type'] === 'Bedtime')
+        .map(e => e.Time)[0];
+    
+      const todayWakeTimes = filtered
+        .filter(e => e['Event Collection'] === 'Rest Event' && e['Event Type'] === 'Wakeup')
+        .map(e => e.Time)
+        .filter(t => t);
+    
+      let bathroomVisitsNight = 0;
+      filtered.forEach(e => {
+        if(e['Event Collection'] !== 'Bathroom Event') return;
+        const t = parseTime(selectedDate, e.Time);
+        if(!t) return;
+    
+        const bedtimeDate = yesterdayBedtimeStr ? parseTime(yesterdayStr, yesterdayBedtimeStr) : null;
+        const wakeDate = todayWakeTimes.length ? parseTime(selectedDate, todayWakeTimes[0]) : null;
+    
+        if(bedtimeDate && wakeDate) {
+          if(t >= bedtimeDate && t <= wakeDate) bathroomVisitsNight++;
+        } else if(wakeDate) {
+          if(t <= wakeDate) bathroomVisitsNight++;
+        }
+      });
+    
+      document.getElementById('summary-bathroom-today').textContent = bathroomVisitsToday;
+      document.getElementById('summary-bathroom-night').textContent = bathroomVisitsNight;
+    
+      // --- Event cards ---
+      filtered.forEach(event => {
+        const card = document.createElement('div');
+        card.classList.add('card');
+    
+        if(event['Event Collection']) {
+          card.classList.add(event['Event Collection'].toLowerCase().replace(' ', '-') + '-event');
+        }
+    
+        const displayTime = event.Time || '';
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'card-title-collection';
+        titleDiv.textContent = `${displayTime}: ${event['Event Collection'] || ''}`;
+        card.appendChild(titleDiv);
+    
+        const bodyDiv = document.createElement('div');
+        bodyDiv.className = 'card-body';
+    
+        const left = document.createElement('div');
+        left.className = 'card-left';
+        let imgSrc = 'https://via.placeholder.com/80?text=Event';
+        if(event['Event Collection'] && eventImages[event['Event Collection']]) {
+          imgSrc = eventImages[event['Event Collection']][event['Event Type']] || eventImages[event['Event Collection']]['default'];
+        }
+        const img = document.createElement('img');
+        img.src = imgSrc;
+        left.appendChild(img);
+    
+        const right = document.createElement('div');
+        right.className = 'card-right';
+        const collection = event['Event Collection'];
+    
+        if(collection === 'Meal Event') {
+          if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
+          if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
+        } else if(collection === 'Bathroom Event') {
+          if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
+          if(event['Sub Event Type']) right.innerHTML += `<p><strong>Details:</strong> ${event['Sub Event Type']}</p>`;
+          if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
+        } else if(collection === 'Rest Event') {
+          if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
+          if(event['Energy']) right.innerHTML += `<p><strong>Details:</strong> ${event['Energy']}</p>`;
+          if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
+        } else if(collection === 'Engagement Event') {
+          if(event['Event Type']) right.innerHTML += `<p><strong>${event['Event Type']}</strong></p>`;
+          if(event['Duration']) right.innerHTML += `<p><strong>Duration:</strong> ${event['Duration']}</p>`;
+          if(event['Notes']) right.innerHTML += `<p><strong>Notes:</strong><br>${event['Notes']}</p>`;
+        }
+    
+        if(event['Photo Links']) {
+          const photos = event['Photo Links'].split(',').map(p => p.trim()).filter(p => p);
+          photos.forEach((url,i) => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.className = 'photo-link';
+            a.textContent = `Photo ${i+1}`;
+            right.appendChild(a);
+          });
+        }
+    
+        bodyDiv.appendChild(left);
+        bodyDiv.appendChild(right);
+        card.appendChild(bodyDiv);
+        container.appendChild(card);
+      });
+    }
+    
+    // --- Initialize ---
+    fetchData().then(data => {
+      populateDropdown(data);
+      document.getElementById('dateDropdown').addEventListener('change', e => {
+        renderCards(data, e.target.value);
+      });
+    });
+    </script>
+    
 </body>
 </html>
