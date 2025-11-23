@@ -1,86 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grandma's Day Tracker</title>
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Cards Page</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .cards-container {
+    display: flex;
+    flex-direction: column; /* stacked vertically */
+    gap: 20px;
+    align-items: center;
+  }
+
+  .card {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card h2 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 20px;
+  }
+
+  /* Button grid with two columns inside each card */
+  .button-grid {
+    display: flex;
+    gap: 20px;
+  }
+
+  .button-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1; /* each column takes equal width */
+  }
+
+  button {
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: #3db3fd;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    width: 100%;
+  }
+
+  button:hover {
+    background-color: #0091ea;
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Grandma's Day Tracker</h1>
-      <div class="small">Tap to log an event</div>
-    </header>
 
-    <div class="grid">
-      <!-- Column 1: Meals -->
-      <div class="card" id="mealsCard">
-        <h2>Meals</h2>
-        <div class="small">Tap a meal to start an entry</div>
+<h1>Event Cards</h1>
 
-        <div class="buttons" id="mealButtons">
-          <button class="btn breakfast" data-meal="Breakfast">Breakfast</button>
-          <button class="btn lunch" data-meal="Lunch">Lunch</button>
-          <button class="btn dinner" data-meal="Dinner">Dinner</button>
-          <button class="btn snack" data-meal="Snack">Snack</button>
-        </div>
+<div class="cards-container">
+
+  <!-- Meal Card -->
+  <div class="card" id="meal-card">
+    <h2>Meal</h2>
+    <div class="button-grid">
+      <div class="button-column">
+        <button id="breakfast-btn">Breakfast</button>
+        <button id="snack-btn">Snack</button>
       </div>
-
-      <!-- placeholder cards -->
-      <div class="card"><h2>Bathroom Event</h2><div class="small">Tap to open</div></div>
-      <div class="card"><h2>Sleep & Rest</h2><div class="small">Tap to open</div></div>
-      <div class="card"><h2>Engagement / Other</h2><div class="small">Tap to open</div></div>
-    </div>
-  </div>
-
-  <!-- Modal -->
-  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal" id="modal">
-      <div class="modal-header">
-        <div>
-          <strong id="modalTitle">Meal</strong>
-          <div class="small" id="modalSub">Logging</div>
-        </div>
-        <button class="close-btn" id="modalClose" aria-label="Close">✕</button>
-      </div>
-
-      <div style="margin-top:8px">
-        <label for="entryDate">Date</label>
-        <input id="entryDate" type="date" />
-
-        <label for="entryTime">Time</label>
-        <input id="entryTime" type="time" />
-
-        <label for="caregiver">Caregiver name (optional)</label>
-        <input id="caregiver" type="text" placeholder="Your name" />
-
-        <label>Notes (rich text)</label>
-        <div class="toolbar" aria-hidden="true">
-          <button class="tool-btn" data-cmd="bold"><strong>B</strong></button>
-          <button class="tool-btn" data-cmd="italic"><em>I</em></button>
-          <button class="tool-btn" data-cmd="underline"><u>U</u></button>
-          <button class="tool-btn" data-cmd="undo">↶</button>
-          <button class="tool-btn" data-cmd="redo">↷</button>
-        </div>
-        <div id="notesRTE" class="rte" contenteditable="true" aria-label="Notes editor" placeholder="Add notes..."></div>
-
-        <label for="photo">Photo (optional)</label>
-        <div class="file-row">
-          <input id="photoInput" type="file" accept="image/*" capture="environment" />
-          <div id="filePreview" class="small" style="max-width:60%"></div>
-        </div>
-
-        <div class="actions">
-          <button class="cancel" id="cancelBtn">Cancel</button>
-          <button class="submit" id="submitBtn">Submit</button>
-        </div>
-
-        <div id="status" class="status" aria-live="polite"></div>
+      <div class="button-column">
+        <button id="lunch-btn">Lunch</button>
+        <button id="dinner-btn">Dinner</button>
       </div>
     </div>
   </div>
 
-  <script src="js/app.js"></script>
+  <!-- Bathroom Card -->
+  <div class="card" id="bathroom-card">
+    <h2>Bathroom</h2>
+    <div class="button-grid">
+      <div class="button-column">
+        <button id="breakfast-btn">Pee</button>
+        <button id="snack-btn">Bowel Movement</button>
+      </div>
+      <div class="button-column">
+        <button id="breakfast-btn">Shower</button>
+        <button id="snack-btn">Other</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rest Card -->
+  <div class="card" id="rest-card">
+    <h2>Rest</h2>
+    <div class="button-grid">
+      <div class="button-column">
+        <button id="breakfast-btn">Wakeup</button>
+        <button id="snack-btn">Bedtime</button>
+      </div>
+      <div class="button-column">
+        <button id="breakfast-btn">Rest</button>
+        <button id="snack-btn">Nap</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Card -->
+  <div class="card" id="activity-card">
+    <h2>Activity</h2>
+    <div class="button-grid">
+      <div class="button-column">
+        <button id="breakfast-btn">Watch Youtube</button>
+        <button id="snack-btn">Video Call</button>
+      </div>
+      <div class="button-column">
+        <button id="breakfast-btn">Visiors</button>
+        <button id="snack-btn">Exercise</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>
